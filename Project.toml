@@ -1,0 +1,6 @@
+[deps]
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+LQMRunner = "cd626245-d812-407f-85b3-87de21dba69c"
+LatticeQM = "606d2a7e-9b17-11e9-1c5c-455b84f60309"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
