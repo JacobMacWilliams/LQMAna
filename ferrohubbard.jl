@@ -5,7 +5,12 @@ if !(nprocs() > 1)
 end
 
 @everywhere using LatticeQM
-using LQMRunner
+@everywhere import LinearAlgebra.BLAS
+#@everywhere using LinearAlgebra: Diagonal
+@everywhere using LQMRunner
+@everywhere include("jobs/GetFig2Wolf2019.jl")
+@everywhere using .GetFig2Wolf2019
+BLAS.set_num_threads(1)
 using JLD2
 
 const PROJECTROOT = pkgdir(LQMRunner)
@@ -15,16 +20,21 @@ if !isfile(modelpath)
 end
 
 model = load(modelpath)["model"];
+klin = getparams(model)[:klin]
+doping = getparams(model)[:doping]
 
-include("jobs/GetFig2Wolf2019.jl")
-using .GetFig2Wolf2019
 
-ks = Structure.regulargrid(;nk=81)
-mu = getchemicalpotential(model, -6, ks)
+ks = Structure.regulargrid(;nk=klin^2)
 
+@info "Calculating chemical potential at " * string(doping) * " charge doping..."
+mu = getchemicalpotential(model, doping, ks)
+
+@info "Calculating the magnetization resolved bandstructure at the fermi surface..."
 @time plta = GetFig2Wolf2019.getfig2a(model, mu)
+savefig(plta, "distributedoptbands.png")
+
+@info "Calculating the spatially resolved magnetization of the ground state..."
 @time pltb = GetFig2Wolf2019.getfig2b(model, mu, ks)
-savefig(plta, "distributeoptbands.png")
 savefig(pltb, "distributedoptspinmap.png")
 println(mu)
 

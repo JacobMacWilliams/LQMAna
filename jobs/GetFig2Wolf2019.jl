@@ -2,7 +2,8 @@ module GetFig2Wolf2019
 using ..LQMRunner
 using LatticeQM: getbands, kpath, Operators, Lattices
 using LatticeQM.Structure: regulargrid
-using LinearAlgebra
+using LinearAlgebra: I, kron, Diagonal
+using Distributed
 using Plots
 
 function getfig2(model, outputdir)
@@ -50,29 +51,79 @@ function getfig2a(model, mu)
     return plt
 end
 
+function localspin_distributed(ρ, sz, sites::Vector{Int}, latsize::Int, results::RemoteChannel, pool::RemoteChannel)
+	spinzs = []
+	for i in sites
+		proj_i = kron(Diagonal([j == i for j in 1:latsize]), Matrix(1.0I, 2, 2))
+		spinz = real(Operators.trace(ρ, sz * proj_i))
+		push!(spinzs, spinz)
+	end
+	put!(results, (sites, spinzs))
+	put!(pool, myid())
+end
+
 function getfig2b(model, mu, ks)
 	
+	n = nworkers()
+	if !(n > 1)
+		error("This code must be run distributed.")
+	end
+	
 	lat = getlattice(model)
-	ρ = getdensitymatrix(model, mu, ks; multimode=:distributed)
-    
-	basis = Lattices.getA(lat)
     sitenumber = Lattices.countorbitals(lat)
+	basis = Lattices.getA(lat)
     latpos = Lattices.positions(lat)
-    sz = Operators.spin(lat, "sz")
 
-    siteprojector(latsize, i) = kron(Diagonal([j == i for j in 1:latsize]), Matrix(1.0I, 2, 2))
-	
-    expspinzs = []
-    for i in 1:sitenumber
-        proj_i = siteprojector(sitenumber, i)
-		expspinz = real(Operators.trace(ρ, sz * proj_i))
-        push!(expspinzs, expspinz)
-    end
-	
+	# we will be translating the spin map by bravais vectors to see the emergent spin
+	# texture on the full lattice.
 	translations = [zeros(3), basis[:, 1], basis[:, 2], basis[:, 2] - basis[:, 1]]
-	latpos = hcat([latpos .+ b for b in translations]...)
-	expspinzs = vcat([expspinzs for i in 1:length(translations)]...)
-	plt = plot(scatter(latpos[1, :], latpos[2, :]; zcolor=expspinzs, color=:roma))
+	latpos = hcat([latpos .+ t for t in translations]...)
+
+	# Recalculating density matrix from Hamiltonian
+	ρ = getdensitymatrix(model, mu, ks; multimode=:distributed)
+    sz = Operators.spin(lat, "sz")
+	
+	# Parsing latticeidx chunks for scheduling
+	nchunks = ceil(sitenumber / n)
+	sites = [i for i in 1:sitenumber]
+	chunks = []
+	for i in 1:nchunks
+		startidx = Int(n * i)
+		endidx = Int(n * i + n - 1)
+		if endidx > sitenumber
+			endidx = sitenumber
+		end
+		push!(chunks, sites[startidx:endidx])
+	end
+	
+	# asynchronously schedule matrix multiplication on the workers and greedily scatter
+	# results as as soon as availabe in the results channel. The worker pool guarantees that
+	# the individual workers aren't "overscheduled/overworked".
+	results = RemoteChannel()
+	pool  = RemoteChannel(() -> Channel{Int}(n))
+	for i in workers()
+		put!(pool, i)
+	end
+
+	plt = plot()
+	@sync begin
+
+		# Greedy processing
+		@async for _ in eachindex(chunks)
+			sites, spins = take!(results)
+			# copying results for translated unit cells
+				sites = vcat([sites .+ (i - 1) * sitenumber for i in eachindex(translations)]...)
+			spins = vcat([spins for i in eachindex(translations)]...)
+			scatter!(latpos[1,sites], latpos[2, sites]; markersize=2, zcolor=spins, colors=:roma)
+		end
+		
+		# Scheduling
+		for chunk in chunks
+			worker = take!(pool)
+			remote_do(localspin_distributed, worker, ρ, sz, chunk, sitenumber, results, pool)
+		end
+	end
+	close(results)
     return plt
 end
 
