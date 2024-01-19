@@ -110,11 +110,11 @@ function getfig2b(model, mu, ks)
 
 		# Greedy processing
 		@async for _ in eachindex(chunks)
-			sites, spins = take!(results)
+			siteidxs, spins = take!(results)
 			# copying results for translated unit cells
-				sites = vcat([sites .+ (i - 1) * sitenumber for i in eachindex(translations)]...)
+			siteidxs = vcat([siteidxs .+ (i - 1) * sitenumber for i in eachindex(translations)]...)
 			spins = vcat([spins for i in eachindex(translations)]...)
-			scatter!(latpos[1,sites], latpos[2, sites]; markersize=2, zcolor=spins, colors=:roma)
+			scatter!(latpos[1,siteidxs], latpos[2, siteidxs]; markersize=2, zcolor=spins, color=:roma)
 		end
 		
 		# Scheduling
