@@ -21,13 +21,14 @@ end
 
 model = load(modelpath)["model"];
 klin = getparams(model)[:klin]
-doping = getparams(model)[:doping]
+#doping = getparams(model)[:doping]
+doping = -6
 
 
 ks = Structure.regulargrid(;nk=klin^2)
 
 @info "Calculating chemical potential at " * string(doping) * " charge doping..."
-mu = getchemicalpotential(model, doping, ks)
+mu = getchemicalpotential(model, doping, ks; multimode=:distributed)
 
 @info "Calculating the magnetization resolved bandstructure at the fermi surface..."
 @time plta = GetFig2Wolf2019.getfig2a(model, mu)
