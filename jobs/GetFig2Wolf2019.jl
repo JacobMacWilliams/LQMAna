@@ -85,12 +85,12 @@ function getfig2b(model, mu, ks)
     sz = Operators.spin(lat, "sz")
 	
 	# Parsing latticeidx chunks for scheduling
-	nchunks = ceil(sitenumber / n)
+	chunksize = ceil(sitenumber / n)
 	sites = [i for i in 1:sitenumber]
 	chunks = []
-	for i in 1:nchunks
-		startidx = Int(n * i)
-		endidx = Int(n * i + n - 1)
+	for i in 1:n
+		startidx = Int(chunksize * (i - 1) + 1)
+		endidx = Int(chunksize * i)
 		if endidx > sitenumber
 			endidx = sitenumber
 		end
