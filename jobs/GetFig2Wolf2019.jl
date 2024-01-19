@@ -5,6 +5,7 @@ using LatticeQM.Structure: regulargrid
 using LinearAlgebra: I, kron, Diagonal
 using Distributed
 using Plots
+using ProgressMeter
 
 function getfig2(model, outputdir)
 	
@@ -109,8 +110,9 @@ function getfig2b(model, mu, ks)
 	@sync begin
 
 		# Greedy processing
-		@async for _ in eachindex(chunks)
+		@async @showprogress "Plotting spin map..." for _ in eachindex(chunks)
 			siteidxs, spins = take!(results)
+			println(size(spins))
 			# copying results for translated unit cells
 			siteidxs = vcat([siteidxs .+ (i - 1) * sitenumber for i in eachindex(translations)]...)
 			spins = vcat([spins for i in eachindex(translations)]...)
