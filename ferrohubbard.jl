@@ -25,12 +25,49 @@ end
 	put!(pool, myid())
 end
 
+function get_ldos(H, klin, bandwidth)
+	get_ldos(H, klin, -bandwidth / 2, bandwidth / 2)
+end
+
+function get_ldos(H, klin, e_low, e_high)
+	nbins = klin ^ 2
+	#Γ = abs(e_low - e_high) ^ 2
+	Γ = abs(e_low - e_high) / 2 / nbins / sqrt(exp(1) - 1)
+	get_ldos(H, klin, e_low, e_high, nbins, Γ)
+end
+
+function get_ldos(H, klin, e_low, e_high, nbins, Γ)
+	# Calculating the ldos for the appropriate pll band
+	ks = Structure.regulargrid(nk=klin^2)
+	frequencies = [e_low + e_high * n / nbins for n in 0:nbins]
+	#display(frequencies) # Sanity check
+	ldos = Spectrum.ldos(H, ks, frequencies; Γ=Γ, num_bands=12)
+	return ldos
+end
+	
+	
+function latheatmap(lat, colors, title, outpath)
+	# Plotting the ldos for multiple unit cells to better display structure
+	# resulting from patterns on the edge.
+	positions = Lattices.positions(lat)
+	basis = Lattices.getA(lat)
+	translations = [zeros(size(basis[:, 1])), basis[:, 1], basis[:, 2], basis[:, 2] - basis[:, 1]]
+	
+	positions = hcat([positions .+ b for b in translations]...)
+	colors = vcat([colors for i in 1:length(translations)]...)
+	
+	plot(title=title)
+	#scatter!(positions[1, :], positions[2, :]; markersize=2, zcolor=colors, color=:thermal, clims=(0.0, 0.05))
+	scatter!(positions[1, :], positions[2, :]; markersize=2, zcolor=colors, color=:thermal)
+	savefig(outpath)
+end
+
 const MODELNAME = ARGS[1]
 
 @info "Loading model " * MODELNAME * "..."
-const OUTPUTDIR = "output"
+const OUTPUTDIR = joinpath("output", MODELNAME * "_ana")
 if !isdir(OUTPUTDIR)
-	mkdir(OUTPUTDIR)
+	mkpath(OUTPUTDIR)
 end
 
 #const PROJECTROOT = pkgdir(LQMRunner)
@@ -44,6 +81,7 @@ lat = getlattice(model)
 H = gethamiltonian(model)
 #klin = getparams(model)[:klin]
 klin = 2
+T = getparams(model)[:T]
 tp = getparams(model)[:tperp]
 tps = getparams(model)[:tperp_scaled]
 #doping = getparams(model)[:doping]
@@ -131,4 +169,12 @@ plta = plot(
 
 fname = joinpath(OUTPUTDIR, "distributedoptbands.png")
 savefig(plta, fname)
+
+@info "Calculating the ldos..."
+#ldos = get_ldos(H, klin, -0.01, 0.01, 100, 0.01)
+ldos = get_ldos(H, klin, T)
+fname = "test_ldos.png"
+latheatmap(lat, ldos, "ldos plot", joinpath(OUTPUTDIR, fname))
+
+sleep(2) # Allow workers to close
 println(mu)
