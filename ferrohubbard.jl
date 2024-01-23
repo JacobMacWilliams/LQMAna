@@ -29,6 +29,10 @@ const MODELNAME = ARGS[1]
 
 @info "Loading model " * MODELNAME * "..."
 const OUTPUTDIR = "output"
+if !isdir(OUTPUTDIR)
+	mkdir(OUTPUTDIR)
+end
+
 #const PROJECTROOT = pkgdir(LQMRunner)
 const MODELPATH = joinpath(pkgdir(LQMRunner), "models", MODELNAME * ".jld2")
 if !isfile(MODELPATH)
@@ -104,7 +108,9 @@ pltb = plot()
 	end
 end
 close(results)
-savefig(pltb, "distributedoptspinmap.png")
+
+fname = joinpath(OUTPUTDIR, "distributedoptspinmap.png")
+savefig(pltb, fname)
 
 @info "Calculating the magnetization resolved bandstructure at the fermi surface..."
 ks = kpath(lat, ["γ", "κ", "μ", "κ'", "γ"]; num_points = 100)
@@ -123,6 +129,6 @@ plta = plot(
     colorbar = true,
 )
 
-fname = "distributedoptbands.png"
+fname = joinpath(OUTPUTDIR, "distributedoptbands.png")
 savefig(plta, fname)
 println(mu)
