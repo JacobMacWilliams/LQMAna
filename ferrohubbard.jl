@@ -25,6 +25,34 @@ end
 	put!(pool, myid())
 end
 
+
+const MODELNAME = ARGS[1]
+
+@info "Loading model " * MODELNAME * "..."
+const OUTPUTDIR = joinpath("output", MODELNAME * "_ana")
+if !isdir(OUTPUTDIR)
+	mkpath(OUTPUTDIR)
+end
+
+#const PROJECTROOT = pkgdir(LQMRunner)
+const MODELPATH = joinpath(pkgdir(LQMRunner), "models", MODELNAME * ".jld2")
+if !isfile(MODELPATH)
+	error("File not found")
+end
+
+model = load(MODELPATH)["model"];
+const lat = getlattice(model)
+const H = gethamiltonian(model)
+const klin = getparams(model)[:klin]
+const ks = Structure.regulargrid(;nk=klin^2)
+#klin = 2
+const T = getparams(model)[:T]
+const tp = getparams(model)[:tperp]
+const tps = getparams(model)[:tperp_scaled]
+const doping = getparams(model)[:doping]
+const num_bands = 24
+#doping = -6
+
 function get_ldos(H, klin, bandwidth)
 	get_ldos(H, klin, -bandwidth / 2, bandwidth / 2)
 end
@@ -41,7 +69,14 @@ function get_ldos(H, klin, e_low, e_high, nbins, Γ)
 	ks = Structure.regulargrid(nk=klin^2)
 	frequencies = [e_low + e_high * n / nbins for n in 0:nbins]
 	#display(frequencies) # Sanity check
-	ldos = Spectrum.ldos(H, ks, frequencies; Γ=Γ, num_bands=12)
+	ldos = Spectrum.ldos(H, ks, frequencies; Γ=Γ, num_bands=num_bands)
+	return ldos
+end
+
+function get_ldos(H, ks, frequencies, Γ, num_bands)
+	# Calculating the ldos for the appropriate pll band
+	#display(frequencies) # Sanity check
+	ldos = Spectrum.ldos(H, ks, frequencies; Γ=Γ, num_bands=num_bands)
 	return ldos
 end
 	
@@ -61,34 +96,7 @@ function latheatmap(lat, colors, title, outpath)
 	scatter!(positions[1, :], positions[2, :]; markersize=2, zcolor=colors, color=:thermal)
 	savefig(outpath)
 end
-
-const MODELNAME = ARGS[1]
-
-@info "Loading model " * MODELNAME * "..."
-const OUTPUTDIR = joinpath("output", MODELNAME * "_ana")
-if !isdir(OUTPUTDIR)
-	mkpath(OUTPUTDIR)
-end
-
-#const PROJECTROOT = pkgdir(LQMRunner)
-const MODELPATH = joinpath(pkgdir(LQMRunner), "models", MODELNAME * ".jld2")
-if !isfile(MODELPATH)
-	error("File not found")
-end
-
-model = load(MODELPATH)["model"];
-lat = getlattice(model)
-H = gethamiltonian(model)
-#klin = getparams(model)[:klin]
-klin = 2
-T = getparams(model)[:T]
-tp = getparams(model)[:tperp]
-tps = getparams(model)[:tperp_scaled]
-#doping = getparams(model)[:doping]
-doping = -6
-
 @info "Calculating chemical potential at " * string(doping) * " charge doping..."
-ks = Structure.regulargrid(;nk=klin^2)
 mu = getchemicalpotential(model, doping, ks; multimode=:distributed)
 
 @info "Calculating the spatially resolved magnetization of the ground state..."
@@ -151,9 +159,9 @@ fname = joinpath(OUTPUTDIR, "distributedoptspinmap.png")
 savefig(pltb, fname)
 
 @info "Calculating the magnetization resolved bandstructure at the fermi surface..."
-ks = kpath(lat, ["γ", "κ", "μ", "κ'", "γ"]; num_points = 100)
+path = kpath(lat, ["γ", "κ", "μ", "κ'", "γ"]; num_points = 100)
 Operators.addchemicalpotential!(H, -mu)
-bands = getbands(H, ks, [sz]; format=:sparse, num_bands = 24)
+bands = getbands(H, path, [sz]; format=:sparse, num_bands = num_bands)
 bands.bands = (tp / tps) .* bands.bands
 
 # Plotting band structure
@@ -170,9 +178,20 @@ plta = plot(
 fname = joinpath(OUTPUTDIR, "distributedoptbands.png")
 savefig(plta, fname)
 
+@info "Calculating the dos..."
+avgspacing = (e2 - e1) * tps / tp / klin^2 / num_bands / 5
+gamma = avgspacing / 2 / sqrt(exp(1)-1)
+frequencies, dos = Spectrum.getdos(H, -T / 2, T / 2, 100; Γ=gamma, klin=klin, format=:sparse, num_bands=num_bands)
+plt = plot(title="Density of States")
+bar!(frequencies, dos)
+xlabel!("Energy")
+ylabel!("DOS")
+fname = "DOS.png"
+savefig(plt, joinpath(OUTPUTDIR, fname))
+
 @info "Calculating the ldos..."
-#ldos = get_ldos(H, klin, -0.01, 0.01, 100, 0.01)
-ldos = get_ldos(H, klin, T)
+#ldos = get_ldos(H, klin, -T / 2, T / 2, 100, 0.01)
+ldos = Spectrum.ldos(H, ks, collect(frequencies); Γ=gamma, format=:sparse, num_bands=num_bands)
 fname = "test_ldos.png"
 latheatmap(lat, ldos, "ldos plot", joinpath(OUTPUTDIR, fname))
 
