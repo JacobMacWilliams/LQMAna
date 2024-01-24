@@ -38,6 +38,8 @@ const T = getparams(model)[:T]
 #const doping = getparams(model)[:doping]
 const doping = -6
 const num_bands = 24
+const num_bins = 100
+const gamma = 0.005
 
 @info "Calculating chemical potential at " * string(doping) * " charge doping..."
 const mu = getchemicalpotential(model, doping, ks; multimode=:distributed)
