@@ -34,7 +34,7 @@ const klin = getparams(model)[:klin]
 const tp = getparams(model)[:tperp]
 const tps = getparams(model)[:tperp_scaled]
 const ks = Structure.regulargrid(;nk=klin^2)
-#const T = getparams(model)[:T]
+const T = getparams(model)[:T]
 #const doping = getparams(model)[:doping]
 const doping = -6
 const num_bands = 24
