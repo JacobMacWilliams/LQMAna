@@ -1,5 +1,6 @@
 include("setup.jl")
 using ProgressMeter
+@everywhere using LinearAlgebra: kron, Diagonal, I
 
 @everywhere function localspin_distributed(ρ, sz, sites::Vector{Int}, latsize::Int, results::RemoteChannel, pool::RemoteChannel)
 	spinzs = []
