@@ -49,9 +49,9 @@ const ks = Structure.regulargrid(;nk=klin^2)
 const T = getparams(model)[:T]
 const tp = getparams(model)[:tperp]
 const tps = getparams(model)[:tperp_scaled]
-const doping = getparams(model)[:doping]
+#const doping = getparams(model)[:doping]
+const doping = -6
 const num_bands = 24
-#doping = -6
 
 function get_ldos(H, klin, bandwidth)
 	get_ldos(H, klin, -bandwidth / 2, bandwidth / 2)
@@ -155,7 +155,7 @@ pltb = plot()
 end
 close(results)
 
-fname = joinpath(OUTPUTDIR, "distributedoptspinmap.png")
+fname = joinpath(OUTPUTDIR, "spinmap.png")
 savefig(pltb, fname)
 
 @info "Calculating the magnetization resolved bandstructure at the fermi surface..."
@@ -175,7 +175,7 @@ plta = plot(
     colorbar = true,
 )
 
-fname = joinpath(OUTPUTDIR, "distributedoptbands.png")
+fname = joinpath(OUTPUTDIR, "bands.png")
 savefig(plta, fname)
 
 @info "Calculating the dos..."
@@ -192,7 +192,7 @@ savefig(plt, joinpath(OUTPUTDIR, fname))
 @info "Calculating the ldos..."
 #ldos = get_ldos(H, klin, -T / 2, T / 2, 100, 0.01)
 ldos = Spectrum.ldos(H, ks, collect(frequencies); Γ=gamma, format=:sparse, num_bands=num_bands)
-fname = "test_ldos.png"
+fname = "ldos.png"
 latheatmap(lat, ldos, "ldos plot", joinpath(OUTPUTDIR, fname))
 
 sleep(2) # Allow workers to close
