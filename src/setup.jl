@@ -15,7 +15,7 @@ end
 const MODELNAME = ARGS[1]
 
 @info "Loading model " * MODELNAME * "..."
-const OUTPUTDIR = joinpath("output", MODELNAME * "_ana")
+const OUTPUTDIR = joinpath(@__DIR__, "..", "output", MODELNAME * "_ana")
 if !isdir(OUTPUTDIR)
 	mkpath(OUTPUTDIR)
 end
