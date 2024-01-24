@@ -1,4 +1,3 @@
-include("setup.jl")
 @info "Calculating the dos..."
 #avgspacing = (e2 - e1) * tps / tp / klin^2 / num_bands / 5
 

@@ -1,4 +1,3 @@
-include("setup.jl")
 @info "Calculating the magnetization resolved bandstructure at the fermi surface..."
 path = kpath(lat, ["γ", "κ", "μ", "κ'", "γ"]; num_points = 100)
 Operators.addchemicalpotential!(H, -mu)

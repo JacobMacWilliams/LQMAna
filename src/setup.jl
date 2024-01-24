@@ -43,3 +43,21 @@ const gamma = 0.005
 
 @info "Calculating chemical potential at " * string(doping) * " charge doping..."
 const mu = getchemicalpotential(model, doping, ks; multimode=:distributed)
+
+failed = 0
+for f in ARGS[2:end]
+	if !isfile(joinpath(@__DIR__, f))
+		f = f * ".jl"
+		if !isfile(joinpath(@__DIR__, f))
+			global failed += 1
+			continue
+		end
+	end
+	include(f)
+end
+
+if failed == 0
+	println("Jobs ran.")
+else
+	println(string(failed) * " jobs failed to run.")
+end

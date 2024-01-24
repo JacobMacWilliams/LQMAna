@@ -1,4 +1,3 @@
-include("setup.jl")
 function latheatmap(lat, colors, title, outpath)
 	# Plotting the ldos for multiple unit cells to better display structure
 	# resulting from patterns on the edge.
