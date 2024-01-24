@@ -7,7 +7,7 @@ gamma = 0.0005
 #gamma = avgspacing / 2 / sqrt(exp(1)-1)
 
 Operators.addchemicalpotential!(H, -mu)
-frequencies, dos = Spectrum.getdos(H .- mu, -T / 2, T / 2, 100; Γ=gamma, klin=klin, format=:sparse, num_bands=num_bands)
+frequencies, dos = Spectrum.getdos(H, -T / 2, T / 2, 100; Γ=gamma, klin=klin, format=:sparse, num_bands=num_bands)
 plt = plot(title="Density of States")
 bar!(frequencies, dos)
 xlabel!("Energy")
